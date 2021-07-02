@@ -2,7 +2,7 @@ HOSTNAME=github.com
 NAMESPACE=nimbolus
 NAME=k8sbootstrap
 BINARY=terraform-provider-${NAME}
-VERSION=0.1
+VERSION=0.1.0
 OS_ARCH=linux_amd64
 
 default: build
