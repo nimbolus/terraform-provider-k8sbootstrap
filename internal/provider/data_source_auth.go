@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -107,8 +108,16 @@ func dataSourceAuthRead(ctx context.Context, d *schema.ResourceData, m interface
 			return fmt.Errorf("no secret of type kubernetes.io/service-account-token could be found in namespace %s", d.Get("namespace").(string))
 		},
 		retry.Context(cty),
-		retry.DelayType(retry.BackOffDelay),
+		retry.DelayType(retry.FixedDelay),
+		retry.Delay(500*time.Millisecond),
+		retry.Attempts(uint(d.Get("timeout").(int)*2)),
+		retry.OnRetry(func(n uint, err error) {
+			log.Printf("[DEBUG] Connection attempt %d: %v - retrying...", n, err)
+		}),
 	)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	kubeconfig, err := getKubeconfig(
 		d.Get("server").(string),
