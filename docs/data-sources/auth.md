@@ -22,16 +22,16 @@ variable "token" {
   type = string
 }
 
-data "k8sbootstrap_auth" "ca" {
+data "k8sbootstrap_auth" "auth" {
   server = var.server
   token  = var.token
 }
 
 output "ca_crt" {
-  value = data.k8sbootstrap_auth.ca.ca_crt
+  value = data.k8sbootstrap_auth.auth.ca_crt
 }
-output "kubeconfig_real" {
-  value     = data.k8sbootstrap_auth.ca.kubeconfig
+output "kubeconfig" {
+  value     = data.k8sbootstrap_auth.auth.kubeconfig
   sensitive = true
 }
 ```
