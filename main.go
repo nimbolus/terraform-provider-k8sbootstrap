@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 
-	"github.com/nimbolus/terraform-provider-k8sbootstrap/bootstrap"
+	"github.com/nimbolus/terraform-provider-k8sbootstrap/internal/provider"
 )
 
 //go:generate terraform fmt -recursive ./examples/
@@ -31,7 +31,7 @@ func main() {
 
 	opts := &plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {
-			return bootstrap.Provider()
+			return provider.Provider()
 		},
 	}
 
