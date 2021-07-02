@@ -4,11 +4,11 @@ variable "token" {
 
 data "k8sbootstrap_kubeconfig" "templated" {
   server = "https://not.reachable.example.com"
-  token  = "var.token"
+  token  = var.token
   ca_crt = "put your ca cert here"
 }
 
-output "kubeconfig_templated" {
+output "kubeconfig" {
   value     = data.k8sbootstrap_kubeconfig.templated.kubeconfig
   sensitive = true
 }
