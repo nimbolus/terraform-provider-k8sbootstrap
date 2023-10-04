@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"time"
@@ -30,9 +32,15 @@ func dataSourceAuth() *schema.Resource {
 			},
 			"namespace": {
 				Type:        schema.TypeString,
-				Description: "Namespace to retrieve the account token from",
+				Description: "Namespace to retrieve the k8s API certificate secret from",
 				Optional:    true,
-				Default:     "default",
+				Default:     "kube-system",
+			},
+			"secret_name": {
+				Type:        schema.TypeString,
+				Description: "Name of the secret containing the k8s API certificate",
+				Optional:    true,
+				Default:     "k3s-serving",
 			},
 			"insecure": {
 				Type:        schema.TypeBool,
@@ -90,22 +98,27 @@ func dataSourceAuthRead(ctx context.Context, d *schema.ResourceData, m interface
 
 	err = retry.Do(
 		func() error {
-			secrets, err := clientset.CoreV1().Secrets(d.Get("namespace").(string)).List(ctx, metav1.ListOptions{
-				FieldSelector: "type=kubernetes.io/service-account-token",
-			})
+			secret, err := clientset.CoreV1().Secrets(d.Get("namespace").(string)).Get(ctx, d.Get("secret_name").(string), metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
-			for _, n := range secrets.Items {
-				if caCrtBytes, ok := n.Data["ca.crt"]; ok {
-					if err := d.Set("ca_crt", string(caCrtBytes)); err != nil {
+			if tlsCrtBytes, ok := secret.Data["tls.crt"]; ok {
+				for b, r := pem.Decode(tlsCrtBytes); b != nil; b, r = pem.Decode(r) {
+					cert, err := x509.ParseCertificate(b.Bytes)
+					if err != nil {
 						return err
 					}
-					d.SetId(n.Name)
-					return nil
+					if cert.IsCA {
+						if err := d.Set("ca_crt", string(pem.EncodeToMemory(b))); err != nil {
+							return err
+						}
+						d.SetId(secret.Name)
+						return nil
+					}
 				}
+				return fmt.Errorf("secret does not contain a CA certificate at key tls.crt")
 			}
-			return fmt.Errorf("no secret of type kubernetes.io/service-account-token could be found in namespace %s", d.Get("namespace").(string))
+			return fmt.Errorf("secret does not have a key named tls.crt")
 		},
 		retry.Context(cty),
 		retry.DelayType(retry.FixedDelay),
